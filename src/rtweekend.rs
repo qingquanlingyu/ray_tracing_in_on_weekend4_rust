@@ -18,7 +18,7 @@ pub fn unit_vector(v: &Vec3) -> Vec3 {
     return v / length(v);
 }
 
-pub fn random_in_unit_sphere()->Vec3{
+pub fn random_on_unit_sphere()->Vec3{
     let mut rng = rand::thread_rng();
     let phi:f64 = (rng.gen_range(0.0..360.0) as f64).to_radians();
     let cos_theta:f64 = rng.gen_range(0.0..=1.0);
