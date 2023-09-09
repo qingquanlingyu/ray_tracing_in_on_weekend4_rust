@@ -1,6 +1,4 @@
-use nalgebra::Vector3;
-pub type Point3 = Vector3<f64>;
-pub type Vec3 = Vector3<f64>;
+use crate::rtweekend::{Point3, Vec3};
 pub struct Ray {
     origin: Point3,
     dir: Vec3,

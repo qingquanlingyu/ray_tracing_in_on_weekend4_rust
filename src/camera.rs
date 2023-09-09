@@ -1,17 +1,15 @@
-use rand::{Rng,rngs::ThreadRng};
+use rand::Rng;
 use crate::ray::*;
 use crate::hitable::*;
 use crate::rtweekend::SPP;
 use std::fs::File;
 use std::error::Error;
 use std::io::Write;
-use nalgebra::Vector3;
 use crate::interval::Interval;
-use crate::rtweekend::INFINITY;
+use crate::rtweekend::*;
 
-pub type Color = Vector3<f64>;
 #[warn(non_camel_case_types)]
-struct iColor(i32,i32,i32);
+struct IColor(i32,i32,i32);
 pub struct Camera{
     image_height:i32,
     camera_center:Point3,
@@ -20,7 +18,6 @@ pub struct Camera{
     pixel_delta_v:Vec3,
     image_width:i32,
     spp:i32,
-    rng:ThreadRng
 }
 
 impl Camera{
@@ -46,16 +43,8 @@ impl Camera{
 
         let spp = SPP;
 
-        let rng = rand::thread_rng();
-
-        Camera { image_height, camera_center, pixel00_loc, pixel_delta_u, pixel_delta_v, image_width,spp,rng }
+        Camera { image_height, camera_center, pixel00_loc, pixel_delta_u, pixel_delta_v, image_width,spp }
         
-    }
-    fn length(&self, v: &Vec3) -> f64 {
-        (v.x * v.x + v.y * v.y + v.z * v.z).sqrt()
-    }
-    fn unit_vector(&self, v: &Vec3) -> Vec3 {
-        return v / self.length(v);
     }
     /*
     fn length_squared(&self, v: &Vec3) -> f64 {
@@ -68,25 +57,7 @@ impl Camera{
     fn random_vec3_minmax(&mut self, min:f64, max:f64)->Vec3{
         Vec3::new(self.rng.gen_range(min..max),self.rng.gen_range(min..max),self.rng.gen_range(min..max))
     }
-    */
-    fn random_in_unit_sphere(&mut self)->Vec3{
-        let phi:f64 = (self.rng.gen_range(0.0..360.0) as f64).to_radians();
-        let cos_theta:f64 = self.rng.gen_range(0.0..=1.0);
-        let sin_theta = cos_theta.acos().sin();
-
-        let mut p:Vec3 = Vec3::new(cos_theta*phi.sin(), cos_theta*phi.cos(), sin_theta);
-        
-        let tmp = self.rng.gen_range(0..=1);
-        //随机取反z
-        if tmp == 0{
-            return p;
-        }
-        else{
-            p.z = -p.z;
-            return p;
-        }
-    }
-    fn random_on_hemisphere(&mut self, normal:&Vec3)->Vec3{
+        fn random_on_hemisphere(&mut self, normal:&Vec3)->Vec3{
         let on_sphere = self.random_in_unit_sphere();
         if on_sphere.dot(normal)>0.0{
             on_sphere
@@ -95,21 +66,47 @@ impl Camera{
             -on_sphere
         }
     }
-
-    fn ray_color<T:Hitable>(&mut self, r: &Ray, world:&T) -> Color {
-        if let Some(res) = world.hit(r, &Interval::new_with_val(0.0, INFINITY)) {
-            let direction = self.random_on_hemisphere(&res.normal);
-            return 0.5*self.ray_color(&Ray::new(res.p,direction), world);
+    */
+    fn ray_color<T:Hitable>(&mut self, r: &Ray, world:&T, depth:i32) -> Color {
+        if depth < 3{
+            if let Some(rec) = world.hit(r, &Interval::new_with_val(0.001, INFINITY)) {
+                if let Some((attenuation,scattered)) = rec.material.scatter(&r, &rec){
+                    let res = self.ray_color(&scattered, world, depth+1);
+                    //WHY CANNOT MUL attenuation and res???😡
+                    return Color::new(attenuation.x*res.x,attenuation.y*res.y,attenuation.z*res.z);
+                }  
+            }
+        
+            let unit_direction: Vec3 = unit_vector(&r.dir());
+            let a = 0.5 * (unit_direction.y + 1.0);
+            (1.0 - a) * Color::new(1.0, 1.0, 1.0) + a * Color::new(0.5, 0.7, 1.0)
         }
-    
-        let unit_direction: Vec3 = self.unit_vector(&r.dir());
-        let a = 0.5 * (unit_direction.y + 1.0);
-        (1.0 - a) * Color::new(1.0, 1.0, 1.0) + a * Color::new(0.5, 0.7, 1.0)
+        else{
+            if let Some(rec) = world.hit(r, &Interval::new_with_val(0.001, INFINITY)) {
+                if let Some((attenuation,scattered)) = rec.material.scatter(&r, &rec){
+                    let tmp = rand::thread_rng().gen_range(0.0..1.0);
+                    if tmp < RR_PROBABILITY
+                    {
+                        let res = self.ray_color(&scattered, world, depth+1);
+                        //WHY CANNOT MUL attenuation and res???😡
+                        return Color::new(attenuation.x*res.x,attenuation.y*res.y,attenuation.z*res.z)/RR_PROBABILITY;
+                    }
+                    else {
+                        return Color::new(0.0,0.0,0.0);
+                    }
+                }  
+            }
+        
+            let unit_direction: Vec3 = unit_vector(&r.dir());
+            let a = 0.5 * (unit_direction.y + 1.0);
+            (1.0 - a) * Color::new(1.0, 1.0, 1.0) + a * Color::new(0.5, 0.7, 1.0)/RR_PROBABILITY
+        }
     }
 
     fn pixel_sample_square(&mut self)->Vec3{
-        let px = -0.5 + self.rng.gen::<f64>();
-        let py = -0.5 + self.rng.gen::<f64>();
+        let mut rng = rand::thread_rng();
+        let px = -0.5 + rng.gen::<f64>();
+        let py = -0.5 + rng.gen::<f64>();
         return (px * self.pixel_delta_u) + (py * self.pixel_delta_v);
     }
     fn get_ray(&mut self,i:i32,j:i32)->Ray{
@@ -121,17 +118,17 @@ impl Camera{
 
         Ray::new(self.camera_center, ray_direction)    
     }
-    fn get_color(&self, pixel_color:&Color)->iColor{
+    fn get_color(&self, pixel_color:&Color)->IColor{
         let scale = 1.0/(self.spp as f64);
-        let r = pixel_color.x * scale;
-        let g = pixel_color.y * scale;
-        let b = pixel_color.z *scale;
+        let r = gamma_correction(pixel_color.x * scale);
+        let g = gamma_correction(pixel_color.y * scale);
+        let b = gamma_correction(pixel_color.z *scale);
 
         let intensity:Interval = Interval::new_with_val(0.000,0.999);
         let r:i32 = (256.0*intensity.clamp(&r)) as i32;
         let g:i32 = (256.0*intensity.clamp(&g)) as i32;
         let b:i32 = (256.0*intensity.clamp(&b)) as i32;
-        iColor(r, g, b)
+        IColor(r, g, b)
     }
     pub fn render<T:Hitable>(&mut self, file:&mut File, world:&T) -> Result<(), Box<dyn Error>>{
         file.write_all(format!("P3\n{0} {1}\n255\n", self.image_width, self.image_height).as_bytes())?;
@@ -141,7 +138,7 @@ impl Camera{
                 let mut pixel_color:Color = Color::new(0.0,0.0,0.0);
                 for _ in 0..self.spp{
                     let r: Ray = self.get_ray(i, j);
-                    pixel_color += self.ray_color(&r, world);
+                    pixel_color += self.ray_color(&r, world, 0);
                 }          
                 let out = self.get_color(&pixel_color);
                 

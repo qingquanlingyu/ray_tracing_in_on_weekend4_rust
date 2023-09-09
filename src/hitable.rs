@@ -1,20 +1,23 @@
-use crate::ray::{Point3, Ray, Vec3};
+use crate::ray::Ray;
+use crate::rtweekend::{Point3,Vec3};
 use crate::interval::Interval;
-use std::rc::Rc;
+use crate::material::Material;
 
-pub struct HitRecord {
+pub struct HitRecord<'a> {
     pub t: f64,
     pub p: Point3,
     pub normal: Vec3,
     pub front_face: bool,
+    pub material: &'a dyn Material
 }
-impl HitRecord {
-    pub fn new(at: f64, ap: Point3, anormal: Vec3) -> Self {
+impl<'a> HitRecord<'a> {
+    pub fn new(t: f64, p: Point3, normal: Vec3, material: &'a dyn Material) -> Self {
         HitRecord {
-            t: at,
-            p: ap,
-            normal: anormal,
+            t,
+            p,
+            normal,
             front_face: true,
+            material
         }
     }
     pub fn set_face_normal(&mut self, r: &Ray, outward_normal: Vec3) {
@@ -31,11 +34,11 @@ pub trait Hitable {
 }
 
 pub struct HittableList {
-    objects: Vec<Rc<dyn Hitable>>,
+    objects: Vec<Box<dyn Hitable>>,
 }
 
 impl HittableList {
-    pub fn add(&mut self, object: Rc<dyn Hitable>) {
+    pub fn add(&mut self, object: Box<dyn Hitable>) {
         self.objects.push(object);
     }
     pub fn new() -> Self {
