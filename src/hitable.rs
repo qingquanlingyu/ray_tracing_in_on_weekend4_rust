@@ -54,7 +54,7 @@ impl Hitable for HittableList {
         let mut closed_so_far = ray_t.max;
 
         for object in &self.objects {
-            if let Some(tmp_rec) = object.hit(r, &&Interval::new_with_val(ray_t.min, closed_so_far)) {
+            if let Some(tmp_rec) = object.hit(r, &&Interval::new(ray_t.min, closed_so_far)) {
                 closed_so_far = tmp_rec.t;
                 res = Some(tmp_rec);
             }

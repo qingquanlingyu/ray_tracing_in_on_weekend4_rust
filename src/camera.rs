@@ -69,7 +69,7 @@ impl Camera{
     */
     fn ray_color<T:Hitable>(&mut self, r: &Ray, world:&T, depth:i32) -> Color {
         if depth < 3{
-            if let Some(rec) = world.hit(r, &Interval::new_with_val(0.001, INFINITY)) {
+            if let Some(rec) = world.hit(r, &Interval::new(0.001, INFINITY)) {
                 if let Some((attenuation,scattered)) = rec.material.scatter(&r, &rec){
                     let res = self.ray_color(&scattered, world, depth+1);
                     //WHY CANNOT MUL attenuation and res???😡
@@ -82,7 +82,7 @@ impl Camera{
             (1.0 - a) * Color::new(1.0, 1.0, 1.0) + a * Color::new(0.5, 0.7, 1.0)
         }
         else{
-            if let Some(rec) = world.hit(r, &Interval::new_with_val(0.001, INFINITY)) {
+            if let Some(rec) = world.hit(r, &Interval::new(0.001, INFINITY)) {
                 if let Some((attenuation,scattered)) = rec.material.scatter(&r, &rec){
                     let tmp = rand::thread_rng().gen_range(0.0..1.0);
                     if tmp < RR_PROBABILITY
@@ -124,7 +124,7 @@ impl Camera{
         let g = gamma_correction(pixel_color.y * scale);
         let b = gamma_correction(pixel_color.z *scale);
 
-        let intensity:Interval = Interval::new_with_val(0.000,0.999);
+        let intensity:Interval = Interval::new(0.000,0.999);
         let r:i32 = (256.0*intensity.clamp(&r)) as i32;
         let g:i32 = (256.0*intensity.clamp(&g)) as i32;
         let b:i32 = (256.0*intensity.clamp(&b)) as i32;

@@ -5,13 +5,7 @@ pub struct Interval{
 }
 
 impl Interval{
-    pub fn new()->Self{
-        Interval{
-            min:INFINITY,
-            max:-INFINITY,
-        }
-    }
-    pub fn new_with_val(min:f64,max:f64)->Self{
+    pub fn new(min:f64,max:f64)->Self{
         Interval{
             min,
             max
