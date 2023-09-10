@@ -37,7 +37,7 @@ pub fn random_on_unit_sphere()->Vec3{
     let mut p:Vec3 = Vec3::new(cos_theta*phi.sin(), cos_theta*phi.cos(), sin_theta);
     
     let tmp = rng.gen_range(0..=1);
-    //random reverse z
+    //randomly reverse z
     if tmp == 0{
         return p;
     }
