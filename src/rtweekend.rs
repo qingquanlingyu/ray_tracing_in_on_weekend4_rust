@@ -1,6 +1,6 @@
 pub const INFINITY:f64 = std::f64::INFINITY;
-pub const SPP:i32 = 256;
-pub const RR_PROBABILITY:f64 = 0.8;
+pub const SPP:i32 = 500;
+pub const RR_PROBABILITY:f64 = 0.75;
 use rand::Rng;
 
 use nalgebra::Vector3;
@@ -16,6 +16,16 @@ pub fn length(v: &Vec3) -> f64 {
 }
 pub fn unit_vector(v: &Vec3) -> Vec3 {
     return v / length(v);
+}
+
+pub fn random_color()->Color{
+    let mut rng = rand::thread_rng();
+    Color::new(rng.gen::<f64>(),rng.gen::<f64>(),rng.gen::<f64>())
+}
+
+pub fn random_color_range(min:f64, max:f64)->Color{
+    let mut rng = rand::thread_rng();
+    Color::new(rng.gen_range(min..max),rng.gen_range(min..max),rng.gen_range(min..max))
 }
 
 pub fn random_on_unit_sphere()->Vec3{
@@ -36,6 +46,13 @@ pub fn random_on_unit_sphere()->Vec3{
         return p;
     }
 }
+pub fn random_in_unit_disk() -> Vec3 {
+    let mut rng = rand::thread_rng();
+    let theta:f64 = (rng.gen_range(0.0..360.0) as f64).to_radians();
+    let r:f64 = rng.gen::<f64>().sqrt();
+
+    Vec3::new(r*theta.cos(), r*theta.sin(), 0.0)
+}
 
 pub fn near_zero(v:&Vec3)->bool {
     // Return true if the vector is close to zero in all dimensions.
@@ -45,4 +62,11 @@ pub fn near_zero(v:&Vec3)->bool {
 
 pub fn reflect(v:&Vec3, n:&Vec3)->Vec3{
     v-2.0*v.dot(n)*n
+}
+
+pub fn refract(uv:&Vec3, n:&Vec3, etai_over_etat:f64)->Vec3{
+    let cos_theta = f64::min((-uv).dot(&n),1.0);
+    let r_out_perp: Vec3 = etai_over_etat * (uv + cos_theta * n);
+    let r_out_parallel: Vec3 = -(1.0- length(&r_out_perp).powi(2)).abs().sqrt() * n;
+    r_out_perp + r_out_parallel
 }

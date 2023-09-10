@@ -18,32 +18,52 @@ pub struct Camera{
     pixel_delta_v:Vec3,
     image_width:i32,
     spp:i32,
+    defocus_angle:f64,
+    defocus_disk_u: Vec3,
+    defocus_disk_v: Vec3
 }
 
 impl Camera{
     pub fn new()->Self{
-        let aspect_ratio = 16.0 / 9.0;
-        let image_width = 400;
+        let aspect_ratio = 16.0/9.0;
+        let image_width = 540;
         let image_height = std::cmp::max(((image_width as f64) / aspect_ratio) as i32,1);
 
-        let focal_length = 1.0;
-        let viewport_height = 2.0;
+        let lookfrom = Point3::new(13.0, 2.0, 3.0);
+        let lookat = Point3::new(0.0, 0.0, 0.0);
+        let vfov:f64 = 20.0;
+        let defocus_angle:f64 = 0.05;
+        let focus_dist:f64 = 10.0;
+
+        let camera_center = lookfrom;
+        let theta = vfov.to_radians();
+        let h = (theta/2.0).tan();
+        let viewport_height = 2.0 * h * focus_dist;
         let viewport_width = viewport_height * (image_width as f64 / image_height as f64);
-        let camera_center = Point3::new(0.0, 0.0, 0.0);
+
+        const VUP:Vec3 = Vec3::new(0.0,1.0,0.0);
+        let w = unit_vector(&(lookfrom - lookat));
+        let u = unit_vector(&VUP.cross(&w));
+        let v = w.cross(&u);
     
-        let viewport_u = Vec3::new(viewport_width, 0.0, 0.0);
-        let viewport_v = Vec3::new(0.0, -viewport_height, 0.0);
+        let viewport_u = viewport_width * u;
+        let viewport_v = viewport_height * -v;
     
         let pixel_delta_u = viewport_u / image_width as f64;
         let pixel_delta_v = viewport_v / image_height as f64;
     
         let viewport_upper_left =
-            camera_center - Vec3::new(0.0, 0.0, focal_length) - viewport_u / 2.0 - viewport_v / 2.0;
+            camera_center - (focus_dist * w) - viewport_u / 2.0 - viewport_v / 2.0;
         let pixel00_loc = viewport_upper_left + 0.5 * (pixel_delta_u + pixel_delta_v);
 
         let spp = SPP;
 
-        Camera { image_height, camera_center, pixel00_loc, pixel_delta_u, pixel_delta_v, image_width,spp }
+        let defocus_radius = focus_dist * (defocus_angle / 2.0).to_radians().tan();
+        let defocus_disk_u = u * defocus_radius;
+        let defocus_disk_v = v * defocus_radius;
+
+
+        Camera { image_height, camera_center, pixel00_loc, pixel_delta_u, pixel_delta_v, image_width, spp, defocus_angle, defocus_disk_u, defocus_disk_v }
         
     }
     /*
@@ -109,14 +129,19 @@ impl Camera{
         let py = -0.5 + rng.gen::<f64>();
         return (px * self.pixel_delta_u) + (py * self.pixel_delta_v);
     }
+    fn defocus_disk_sample(&self) -> Point3{
+        let p = random_in_unit_disk();
+        self.camera_center + (p.x * self.defocus_disk_u) + (p.y * self.defocus_disk_v)
+    }
     fn get_ray(&mut self,i:i32,j:i32)->Ray{
         let pixel_center =
                     self.pixel00_loc + (i as f64 * self.pixel_delta_u) + (j as f64 * self.pixel_delta_v);
         let pixel_sample = pixel_center + self.pixel_sample_square();
 
+        let ray_origin = if self.defocus_angle <= 0.0 {self.camera_center} else {self.defocus_disk_sample()};
         let ray_direction = pixel_sample - self.camera_center;
 
-        Ray::new(self.camera_center, ray_direction)    
+        Ray::new(ray_origin, ray_direction)    
     }
     fn get_color(&self, pixel_color:&Color)->IColor{
         let scale = 1.0/(self.spp as f64);
