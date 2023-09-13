@@ -89,7 +89,7 @@ impl Camera{
     */
     fn ray_color<T:Hitable>(&mut self, r: &Ray, world:&T, depth:i32) -> Color {
         if depth < 3{
-            if let Some(rec) = world.hit(r, &Interval::new(0.001, INFINITY)) {
+            if let Some(rec) = world.hit(r, &mut Interval::new(0.001, INFINITY)) {
                 if let Some((attenuation,scattered)) = rec.material.scatter(&r, &rec){
                     let res = self.ray_color(&scattered, world, depth+1);
                     //WHY CANNOT MUL attenuation and res???😡
@@ -102,7 +102,7 @@ impl Camera{
             (1.0 - a) * Color::new(1.0, 1.0, 1.0) + a * Color::new(0.5, 0.7, 1.0)
         }
         else{
-            if let Some(rec) = world.hit(r, &Interval::new(0.001, INFINITY)) {
+            if let Some(rec) = world.hit(r, &mut Interval::new(0.001, INFINITY)) {
                 if let Some((attenuation,scattered)) = rec.material.scatter(&r, &rec){
                     let tmp = rand::thread_rng().gen_range(0.0..1.0);
                     if tmp < RR_PROBABILITY
@@ -155,7 +155,7 @@ impl Camera{
         let b:i32 = (256.0*intensity.clamp(&b)) as i32;
         IColor(r, g, b)
     }
-    pub fn render<T:Hitable>(&mut self, file:&mut File, world:&T) -> Result<(), Box<dyn Error>>{
+    pub fn render<T:Hitable>(&mut self, file:&mut File, world:T) -> Result<(), Box<dyn Error>>{
         file.write_all(format!("P3\n{0} {1}\n255\n", self.image_width, self.image_height).as_bytes())?;
 
         for j in 0..self.image_height {
@@ -163,7 +163,7 @@ impl Camera{
                 let mut pixel_color:Color = Color::new(0.0,0.0,0.0);
                 for _ in 0..self.spp{
                     let r: Ray = self.get_ray(i, j);
-                    pixel_color += self.ray_color(&r, world, 0);
+                    pixel_color += self.ray_color(&r, &world, 0);
                 }          
                 let out = self.get_color(&pixel_color);
                 

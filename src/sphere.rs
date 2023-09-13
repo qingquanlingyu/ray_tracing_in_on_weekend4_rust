@@ -3,21 +3,25 @@ use crate::ray::Ray;
 use crate::interval::Interval;
 use crate::rtweekend::{Vec3,Point3};
 use crate::material::Material;
-
+use crate::aabb::AABB;
 pub struct Sphere<T:Material> {
     center: Point3,
     radius: f64,
-    material: T
+    material: T,
+    bbox: AABB
 }
 
 impl<T:Material> Sphere<T> {
     pub fn new(center: Point3, radius: f64, material: T) -> Self {
-        Sphere { center, radius, material }
+        let rvec = Vec3::new(radius,radius,radius);
+        let bbox = AABB::new_with_point(center-rvec, center+rvec);
+        Sphere { center, radius, material, bbox }
     }
 }
 
 impl<T:Material> Hitable for Sphere<T> {
-    fn hit(&self, r: &Ray, ray_t:&Interval) -> Option<HitRecord> {
+    fn hit(&self, r: &Ray, ray_t:&mut Interval) -> Option<HitRecord> {
+        //println!("尝试击中球{},AABB为{:?},光线为{:?}",self.radius, self.bounding_box(),r);
         let oc: Vec3 = r.origin() - self.center;
         let a = r.dir().dot(&r.dir());
         let b = oc.dot(&r.dir());
@@ -45,5 +49,8 @@ impl<T:Material> Hitable for Sphere<T> {
             }
         }
         None
+    }
+    fn bounding_box(&self)->AABB{
+        self.bbox
     }
 }

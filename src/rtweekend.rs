@@ -1,7 +1,9 @@
 pub const INFINITY:f64 = std::f64::INFINITY;
-pub const SPP:i32 = 500;
-pub const RR_PROBABILITY:f64 = 0.75;
+pub const SPP:i32 = 256;
+pub const RR_PROBABILITY:f64 = 0.85;
 use rand::Rng;
+use crate::hitable::Hitable;
+use std::rc::Rc;
 
 use nalgebra::Vector3;
 pub type Color = Vector3<f64>;
@@ -37,7 +39,7 @@ pub fn random_on_unit_sphere()->Vec3{
     let mut p:Vec3 = Vec3::new(cos_theta*phi.sin(), cos_theta*phi.cos(), sin_theta);
     
     let tmp = rng.gen_range(0..=1);
-    //randomly reverse z
+    //random reverse z
     if tmp == 0{
         return p;
     }
@@ -69,4 +71,17 @@ pub fn refract(uv:&Vec3, n:&Vec3, etai_over_etat:f64)->Vec3{
     let r_out_perp: Vec3 = etai_over_etat * (uv + cos_theta * n);
     let r_out_parallel: Vec3 = -(1.0- length(&r_out_perp).powi(2)).abs().sqrt() * n;
     r_out_perp + r_out_parallel
+}
+
+pub fn box_compare(a:&Rc<dyn Hitable>, b:&Rc<dyn Hitable>, axis_index:i8)->bool{
+    a.bounding_box().axis(axis_index).min < b.bounding_box().axis(axis_index).min
+}
+pub fn box_x_compare(a:&Rc<dyn Hitable>, b:&Rc<dyn Hitable>)->bool{
+    box_compare(a, b, 0)
+}
+pub fn box_y_compare(a:&Rc<dyn Hitable>, b:&Rc<dyn Hitable>)->bool{
+    box_compare(a, b, 1)
+}
+pub fn box_z_compare(a:&Rc<dyn Hitable>, b:&Rc<dyn Hitable>)->bool{
+    box_compare(a, b, 2)
 }

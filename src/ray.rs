@@ -1,4 +1,5 @@
 use crate::rtweekend::{Point3, Vec3};
+#[derive(Debug)]
 pub struct Ray {
     origin: Point3,
     dir: Vec3,

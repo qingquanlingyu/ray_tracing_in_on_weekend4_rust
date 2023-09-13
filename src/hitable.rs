@@ -1,7 +1,9 @@
 use crate::ray::Ray;
 use crate::rtweekend::{Point3,Vec3};
-use crate::interval::Interval;
+use crate::interval::*;
 use crate::material::Material;
+use crate::aabb::AABB;
+use std::rc::Rc;
 
 pub struct HitRecord<'a> {
     pub t: f64,
@@ -30,35 +32,42 @@ impl<'a> HitRecord<'a> {
 }
 
 pub trait Hitable {
-    fn hit(&self, r: &Ray, ray_t:&Interval) -> Option<HitRecord>;
+    fn hit(&self, r: &Ray, ray_t:&mut Interval) -> Option<HitRecord>;
+    fn bounding_box(&self)->AABB;
 }
 
 pub struct HittableList {
-    objects: Vec<Box<dyn Hitable>>,
+    pub objects: Vec<Rc<dyn Hitable>>,
+    pub bbox: AABB
 }
 
 impl HittableList {
-    pub fn add(&mut self, object: Box<dyn Hitable>) {
+    pub fn add(&mut self, object: Rc<dyn Hitable>) {
+        self.bbox = AABB::new_combine(self.bbox, object.bounding_box());
         self.objects.push(object);
     }
     pub fn new() -> Self {
         HittableList {
             objects: Vec::new(),
+            bbox: AABB::new(EMPTY, EMPTY, EMPTY)
         }
     }
 }
 
 impl Hitable for HittableList {
-    fn hit(&self, r: &Ray, ray_t:&Interval) -> Option<HitRecord> {
+    fn hit(&self, r: &Ray, ray_t:&mut Interval) -> Option<HitRecord> {
         let mut res: Option<HitRecord> = None;
         let mut closed_so_far = ray_t.max;
 
         for object in &self.objects {
-            if let Some(tmp_rec) = object.hit(r, &&Interval::new(ray_t.min, closed_so_far)) {
+            if let Some(tmp_rec) = object.hit(r, &mut Interval::new(ray_t.min, closed_so_far)) {
                 closed_so_far = tmp_rec.t;
                 res = Some(tmp_rec);
             }
         }
         res
+    }
+    fn bounding_box(&self)->AABB{
+        self.bbox
     }
 }

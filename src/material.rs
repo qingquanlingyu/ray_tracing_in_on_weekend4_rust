@@ -77,9 +77,11 @@ impl Material for Dielectric {
         let cos_theta = f64::min((-unit_direction).dot(&rec.normal),1.0);
         let sin_theta = (1.0-cos_theta*cos_theta).sqrt();
 
+        #[warn(unused_assignments)]
         let mut dir:Vec3 = Vec3::new(0.0,0.0,0.0);
+        
         let cannot_refract = refraction_ratio * sin_theta > 1.0;
-        if (cannot_refract || self.reflectance(cos_theta, refraction_ratio) > rand::thread_rng().gen::<f64>()){
+        if cannot_refract || self.reflectance(cos_theta, refraction_ratio) > rand::thread_rng().gen::<f64>(){
             dir = reflect(&unit_direction, &rec.normal);
         }
         else{

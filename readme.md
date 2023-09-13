@@ -6,6 +6,8 @@ My Rust Implementation
 
 +Correct implementation of ray tracing details such as generating random vector on a unit sphere and RR.
 
--Without advanced rust features.
+±Avoid using advanced rust features.
 
 -Same project structure as the original C++ version. Fine for learning with book, but may not suitable for rust.
+
+-Without mothon blur(I really hate it...)
