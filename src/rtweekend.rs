@@ -3,12 +3,12 @@ pub const SPP:i32 = 256;
 pub const RR_PROBABILITY:f64 = 0.85;
 use rand::Rng;
 use crate::hitable::Hitable;
-use std::rc::Rc;
 
 use nalgebra::Vector3;
 pub type Color = Vector3<f64>;
 pub type Point3 = Vector3<f64>;
 pub type Vec3 = Vector3<f64>;
+use std::sync::Arc;
 
 pub fn gamma_correction(linear_in:f64)->f64{
     linear_in.powf(1.0/2.2)
@@ -73,15 +73,15 @@ pub fn refract(uv:&Vec3, n:&Vec3, etai_over_etat:f64)->Vec3{
     r_out_perp + r_out_parallel
 }
 
-pub fn box_compare(a:&Rc<dyn Hitable>, b:&Rc<dyn Hitable>, axis_index:i8)->bool{
+pub fn box_compare(a:&Arc<dyn Hitable>, b:&Arc<dyn Hitable>, axis_index:i8)->bool{
     a.bounding_box().axis(axis_index).min < b.bounding_box().axis(axis_index).min
 }
-pub fn box_x_compare(a:&Rc<dyn Hitable>, b:&Rc<dyn Hitable>)->bool{
+pub fn box_x_compare(a:&Arc<dyn Hitable>, b:&Arc<dyn Hitable>)->bool{
     box_compare(a, b, 0)
 }
-pub fn box_y_compare(a:&Rc<dyn Hitable>, b:&Rc<dyn Hitable>)->bool{
+pub fn box_y_compare(a:&Arc<dyn Hitable>, b:&Arc<dyn Hitable>)->bool{
     box_compare(a, b, 1)
 }
-pub fn box_z_compare(a:&Rc<dyn Hitable>, b:&Rc<dyn Hitable>)->bool{
+pub fn box_z_compare(a:&Arc<dyn Hitable>, b:&Arc<dyn Hitable>)->bool{
     box_compare(a, b, 2)
 }

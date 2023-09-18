@@ -4,7 +4,7 @@ use crate::aabb::AABB;
 use crate::ray::Ray;
 use crate::interval::Interval;
 use rand::Rng;
-use std::rc::Rc;
+use std::sync::Arc;
 
 pub struct BVHNode{
     contents: BVHContents,
@@ -12,8 +12,8 @@ pub struct BVHNode{
 }
 
 pub enum BVHContents {
-    Node { left: Rc<dyn Hitable>, right: Rc<dyn Hitable> },
-    Leaf (Rc<dyn Hitable>),
+    Node { left: Arc<dyn Hitable>, right: Arc<dyn Hitable> },
+    Leaf (Arc<dyn Hitable>),
 }
 
 impl Hitable for BVHNode{
@@ -55,7 +55,7 @@ impl Hitable for BVHNode{
 }
 
 impl BVHNode{
-    pub fn new(src_objects: &Vec<Rc<dyn Hitable>>, start:usize, end:usize)->Self{
+    pub fn new(src_objects: &Vec<Arc<dyn Hitable>>, start:usize, end:usize)->Self{
         let mut objects = src_objects.clone();
 
         let axis:i32 = rand::thread_rng().gen_range(0..=2);
@@ -82,8 +82,8 @@ impl BVHNode{
                 }});
 
                 let mid = start + object_span/2;
-                let left = Rc::new(BVHNode::new(&objects, start, mid));
-                let right = Rc::new(BVHNode::new(&objects, mid, end));
+                let left = Arc::new(BVHNode::new(&objects, start, mid));
+                let right = Arc::new(BVHNode::new(&objects, mid, end));
 
                 BVHNode {bbox:AABB::new_combine(left.bounding_box(), right.bounding_box()), contents: BVHContents::Node { left, right }}
             }

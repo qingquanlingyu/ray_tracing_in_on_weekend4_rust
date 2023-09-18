@@ -3,13 +3,15 @@ use crate::rtweekend::{Point3,Vec3};
 use crate::interval::*;
 use crate::material::Material;
 use crate::aabb::AABB;
-use std::rc::Rc;
+use std::sync::Arc;
 
 pub struct HitRecord<'a> {
     pub t: f64,
     pub p: Point3,
     pub normal: Vec3,
     pub front_face: bool,
+    pub u:f64,
+    pub v:f64,
     pub material: &'a dyn Material
 }
 impl<'a> HitRecord<'a> {
@@ -19,6 +21,8 @@ impl<'a> HitRecord<'a> {
             p,
             normal,
             front_face: true,
+            u:0.0,
+            v:0.0,
             material
         }
     }
@@ -37,12 +41,14 @@ pub trait Hitable {
 }
 
 pub struct HittableList {
-    pub objects: Vec<Rc<dyn Hitable>>,
+    pub objects: Vec<Arc<dyn Hitable>>,
     pub bbox: AABB
 }
+unsafe impl Send for HittableList{}
+unsafe impl Sync for HittableList{}
 
 impl HittableList {
-    pub fn add(&mut self, object: Rc<dyn Hitable>) {
+    pub fn add(&mut self, object: Arc<dyn Hitable>) {
         self.bbox = AABB::new_combine(self.bbox, object.bounding_box());
         self.objects.push(object);
     }

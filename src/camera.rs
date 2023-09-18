@@ -7,9 +7,12 @@ use std::error::Error;
 use std::io::Write;
 use crate::interval::Interval;
 use crate::rtweekend::*;
+use rayon::prelude::*;
 
+use nalgebra::Vector3;
 #[warn(non_camel_case_types)]
-struct IColor(i32,i32,i32);
+type IColor = Vector3<u8>;
+
 pub struct Camera{
     image_height:i32,
     camera_center:Point3,
@@ -22,7 +25,8 @@ pub struct Camera{
     defocus_disk_u: Vec3,
     defocus_disk_v: Vec3
 }
-
+unsafe impl Send for Camera{}
+unsafe impl Sync for Camera{}
 impl Camera{
     pub fn new()->Self{
         let aspect_ratio = 16.0/9.0;
@@ -87,7 +91,7 @@ impl Camera{
         }
     }
     */
-    fn ray_color<T:Hitable>(&mut self, r: &Ray, world:&T, depth:i32) -> Color {
+    fn ray_color<T:Hitable>(&self, r: &Ray, world:&T, depth:i32) -> Color {
         if depth < 3{
             if let Some(rec) = world.hit(r, &mut Interval::new(0.001, INFINITY)) {
                 if let Some((attenuation,scattered)) = rec.material.scatter(&r, &rec){
@@ -123,7 +127,7 @@ impl Camera{
         }
     }
 
-    fn pixel_sample_square(&mut self)->Vec3{
+    fn pixel_sample_square(&self)->Vec3{
         let mut rng = rand::thread_rng();
         let px = -0.5 + rng.gen::<f64>();
         let py = -0.5 + rng.gen::<f64>();
@@ -133,7 +137,7 @@ impl Camera{
         let p = random_in_unit_disk();
         self.camera_center + (p.x * self.defocus_disk_u) + (p.y * self.defocus_disk_v)
     }
-    fn get_ray(&mut self,i:i32,j:i32)->Ray{
+    fn get_ray(&self,i:i32,j:i32)->Ray{
         let pixel_center =
                     self.pixel00_loc + (i as f64 * self.pixel_delta_u) + (j as f64 * self.pixel_delta_v);
         let pixel_sample = pixel_center + self.pixel_sample_square();
@@ -150,27 +154,29 @@ impl Camera{
         let b = gamma_correction(pixel_color.z *scale);
 
         let intensity:Interval = Interval::new(0.000,0.999);
-        let r:i32 = (256.0*intensity.clamp(&r)) as i32;
-        let g:i32 = (256.0*intensity.clamp(&g)) as i32;
-        let b:i32 = (256.0*intensity.clamp(&b)) as i32;
-        IColor(r, g, b)
+        let r:u8 = (256.0*intensity.clamp(&r)) as u8;
+        let g:u8 = (256.0*intensity.clamp(&g)) as u8;
+        let b:u8 = (256.0*intensity.clamp(&b)) as u8;
+        IColor::new(r, g, b)
     }
-    pub fn render<T:Hitable>(&mut self, file:&mut File, world:T) -> Result<(), Box<dyn Error>>{
+    pub fn render<T:Hitable+Send+Sync>(&mut self, file:&mut File, world:T) -> Result<(), Box<dyn Error>>{
         file.write_all(format!("P3\n{0} {1}\n255\n", self.image_width, self.image_height).as_bytes())?;
 
-        for j in 0..self.image_height {
-            for i in 0..self.image_width {
-                let mut pixel_color:Color = Color::new(0.0,0.0,0.0);
-                for _ in 0..self.spp{
-                    let r: Ray = self.get_ray(i, j);
-                    pixel_color += self.ray_color(&r, &world, 0);
-                }          
-                let out = self.get_color(&pixel_color);
-                
-                file.write_all(format!("{0} {1} {2}\n", out.0, out.1, out.2).as_bytes())?;
-            }
+        
+        let image =
+        (0..self.image_height).into_par_iter().flat_map(|j|
+                (0..self.image_width).flat_map(|i| {
+                    let pixel_color: Vec3 = (0..self.spp).map(|_| {
+                        let r: Ray = self.get_ray(i, j);
+                        self.ray_color(&r, &world, 0)
+                    }).sum();
+                    let col = self.get_color(&pixel_color);
+                    vec![col.x, col.y, col.z]
+                }).collect::<Vec<u8>>()
+            ).collect::<Vec<u8>>();
+        for col in image.chunks(3) {
+            file.write_all(format!("{0} {1} {2}\n", col[0], col[1], col[2]).as_bytes())?;
         }
-
         Ok(())
     }
 }
